@@ -3,7 +3,8 @@
 int main() {
     FILE *fp;
     int c,
-        checking = 1;
+        checking = 1,
+        lineSkip = 0;
     fpos_t pos,
            pos2;
 
@@ -47,6 +48,11 @@ int main() {
                         fputc(' ', fp);
                         break;
                 }
+            }
+            else if(c == '"') {
+                do {
+                    c = getc(fp);
+                } while(c != '"');
             }
         }
     fclose(fp);
