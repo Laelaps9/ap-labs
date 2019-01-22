@@ -57,6 +57,10 @@ int main() {
             else if(c == '"') {
                 do {
                     c = getc(fp);
+                    if(c == '\\') {
+                        getc(fp);
+                        c = getc(fp);
+                    }
                 } while(c != '"');
             }
         }
