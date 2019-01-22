@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 int main() {
     FILE *fp;
@@ -7,8 +8,12 @@ int main() {
         lineSkip = 0;
     fpos_t pos,
            pos2;
+    char *filename = (char *)malloc(sizeof(char) * 20);
 
-    fp = fopen("test.c", "r+");
+    printf("Type the name of the file: ");
+    scanf("%s", filename);
+    printf("%s", filename);
+    fp = fopen(filename, "r+");
     if(fp) {
         while(!feof(fp)) {
             fgetpos(fp, &pos);
