@@ -4,66 +4,77 @@
 int main() {
     FILE *fp;
     int c,
-        checking = 1,
-        lineSkip = 0;
+        checking = 1;
     fpos_t pos,
            pos2;
+    // Allocates filename so that it can receive a name
     char *filename = (char *)malloc(sizeof(char) * 20);
 
     printf("Type the name of the file: ");
     scanf("%s", filename);
-    printf("%s", filename);
-    fp = fopen(filename, "r+");
-    if(fp) {
-        while(!feof(fp)) {
-            fgetpos(fp, &pos);
+
+    // Checks if a file with the name entered exists
+    // Exits if it does not
+    if(!(fp = fopen(filename, "r+"))) {
+        printf("%s\n", "File not found");
+        return 1;
+    }
+    while(!feof(fp)) {
+        // Saves the position of each character read to know where a comment might start
+        fgetpos(fp, &pos);
+        c = getc(fp);
+        if(c == '/') {
             c = getc(fp);
-            if(c == '/') {
-                c = getc(fp);
-                switch(c) {
-                    case '/':
-                        fsetpos(fp, &pos);
-                        while(ungetc(getc(fp), fp) != '\n' && !feof(fp)) {
+            switch(c) {
+                // Deletes single-line comments
+                case '/':
+                    fsetpos(fp, &pos);
+                    while(ungetc(getc(fp), fp) != '\n' && !feof(fp)) {
+                        fputc(' ', fp);
+                    }
+                    fsetpos(fp, &pos);
+                    fputc(' ', fp);
+                    break;
+                // Deletes multi-line comments
+                case '*':
+                    do {
+                        while(ungetc(getc(fp), fp) != '*') {
                             fputc(' ', fp);
                         }
-                        fsetpos(fp, &pos);
-                        fputc(' ', fp);
-                        break;
-                    case '*':
-                        do {
-                            while(ungetc(getc(fp), fp) != '*') {
-                                fputc(' ', fp);
-                            }
-                            fgetpos(fp, &pos2);
-                            getc(fp);
-                            if(ungetc(getc(fp), fp) == '/') {
-                                fsetpos(fp, &pos);
-                                fputc(' ', fp);
-                                fputc(' ', fp);
-                                checking = 0;
-                            }
-                            else {
-                                fsetpos(fp, &pos2);
-                                fputc(' ', fp);
-                                checking = 1;
-                            }
-                        } while(checking);
-                        fsetpos(fp, &pos2);
-                        fputc(' ', fp);
-                        fputc(' ', fp);
-                        break;
-                }
-            }
-            else if(c == '"') {
-                do {
-                    c = getc(fp);
-                    if(c == '\\') {
+                        fgetpos(fp, &pos2);
                         getc(fp);
-                        c = getc(fp);
-                    }
-                } while(c != '"');
+                        if(ungetc(getc(fp), fp) == '/') {
+                            fsetpos(fp, &pos);
+                            fputc(' ', fp);
+                            fputc(' ', fp);
+                            checking = 0;
+                        }
+                        else {
+                            fsetpos(fp, &pos2);
+                            fputc(' ', fp);
+                            checking = 1;
+                        }
+                    } while(checking);
+                    fsetpos(fp, &pos2);
+                    fputc(' ', fp);
+                    fputc(' ', fp);
+                    break;
+                // Program keeps running normally if no comment was detected
             }
         }
-    fclose(fp);
+        // Checks the contents of a string
+        else if(c == '"') {
+            do {
+                c = getc(fp);
+                // Ignores character constants in the string
+                if(c == '\\') {
+                    getc(fp);
+                    c = getc(fp);
+                }
+            } while(c != '"');
+        }
     }
+    fclose(fp);
+    printf("%s\n", "Comments deleted");
+    return 0;
 }
