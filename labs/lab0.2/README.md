@@ -12,5 +12,5 @@ Contains 3 functions:
 Tests the functions in strlib.c and formats the answers for easier understanding of the outputs.  
 ## Compiling and running
 To compile the programs simply type `make` in terminal. The Makefile will automatically create and link the output files.  
-To execute type `./str-final.o *original string* *string to add* *substring to check for*`. **str-final.o** is the output file created after linking the other output files, the strings after are the parameters it receives.  
+To execute type `./str-final.o [original string] [string to add] [substring to check for]`. **str-final.o** is the output file created after linking the other output files, the strings after are the parameters it receives.  
 Finally, if you want to clean your directory and erase all the output files, type `make clean`.
