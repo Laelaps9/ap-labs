@@ -1,23 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 int main(int argc, char **argv) {
-    FILE *fp;
-    char *filename = argv[1];
-    int c;
+    int fd = open(argv[1], O_RDONLY),
+        fileSize;
 
-    if(!(fp = fopen(filename, "r"))) {
-        printf("File not found\n");
-        return 1;
-    }
-    // Get the first char in a file to check before printing
-    c = getc(fp);
-    // Loops until the end of file is found
-    while(!(feof(fp)) && c != EOF) {
-        printf("%c", c);
-        c = getc(fp);
-    }
+    // Gets size of file
+    fileSize = lseek(fd, 0, SEEK_END);
 
-    fclose(fp);
+    // Goes back to the beginning of the file
+    lseek(fd, 0, SEEK_SET);
+    char content[fileSize + 1];
+    read(fd, content, fileSize + 1);
+    write(1, content, fileSize);
+    close(fd);
     return 0;
 }
