@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 
 #define REPORT_FILE "report.txt"
 #define DICTIONARY_SIZE 10000
@@ -27,7 +28,7 @@ int main(int argc, char **argv) {
 
 struct log_type {
     char name[TYPE_NAME];
-    char **entries;
+    char *entries[LOG_INFO];
     int nEntries;
 };
 
@@ -54,19 +55,22 @@ void addEntry(char *type, char entry[]) {
         }
         strcpy(log_dict[index].name, type);
         log_dict[index].nEntries = 0;
-        for(int i = 0; i < MAX_ENTRIES; i++) {
-            log_dict[index].entries[i] = "NULL";
-        }
-    }
+   }
+
     // Adds the new entry and increases the nEntries value
-    log_dict[index].entries[log_dict[index].nEntries++] = entry;
+    char *copy = (char *)malloc(sizeof(char) * LOG_INFO);
+    strcpy(copy, entry);
+    log_dict[index].entries[log_dict[index].nEntries++] = copy;
 }
 
-void printDict() {
+void writeReport(int reportfd) {
     for(int i = 0; *log_dict[i].name != '\0'; i++) {
-        printf("%s\n", log_dict[i].name);
+        write(reportfd, strcat(log_dict[i].name, "\n"), strlen(log_dict[i].name) + 1);
         for(int j = 0; j < log_dict[i].nEntries; j++) {
-            printf("\t%s\n", log_dict[i].entries[j]);
+            if(strcmp(log_dict[i].entries[j], "") != 0) {
+                write(reportfd, "  ", 2);
+                write(reportfd, strcat(log_dict[i].entries[j], "\n"), strlen(log_dict[i].entries[j]) + 1);
+            }
         }
     }
 }
@@ -74,31 +78,26 @@ void printDict() {
 void analizeLog(char *logFile, char *report) {
     printf("Generating Report from: [%s] log file\n", logFile);
 
-    int filedesc = open(logFile, O_RDONLY),
-        fileSize = lseek(filedesc, 0, SEEK_END),
+    int fd = open(logFile, O_RDONLY),
+        fileSize = lseek(fd, 0, SEEK_END),
         log_start,
         type_start,
         type_end,
-        type_found = 0;
+        type_found = 0,
+        new_type = 0,
+        reportfd;
     char data[fileSize + 1],
          type_name[TYPE_NAME],
-         *log_info = (char *)calloc(LOG_INFO, sizeof(char));
-//         *entry = (char *)calloc(LOG_INFO, sizeof(char));
+         log_info[LOG_INFO];
 
-    lseek(filedesc, 0, SEEK_SET);
-    read(filedesc, data, fileSize + 1);
-    //printf("%s\n", data);
-/*    addEntry("hola", "Entry 0");
-    addEntry("hola2", "Entry 1");
-    addEntry("hola2", "Entry 2");
-    addEntry("hola3", "Entry 3");
-    printDict();
-*/
+    lseek(fd, 0, SEEK_SET);
+    read(fd, data, fileSize + 1);
+    close(fd);
 
     // Creates the General log type
     strcpy(log_dict[0].name, "General:");
 
-    for(int i = 0; i < fileSize + 1; i++) {
+    for(int i = 0; i < fileSize; i++) {
 
         if(data[i] == '[' && data[i + 1] == ' ') {
             log_start = i;
@@ -106,7 +105,7 @@ void analizeLog(char *logFile, char *report) {
         while(data[i] != ']') {
             i++;
         }
-        type_start = i;
+        type_start = i + 2;
         while((data[i] != '\n' && i < fileSize) && type_found == 0) {
             if(data[i] == ':' && data[i + 1] == ' ') {
                 type_found = 1;
@@ -119,25 +118,65 @@ void analizeLog(char *logFile, char *report) {
             }
         }
         type_end = i;
-        printf("basura\n");
         switch (type_found) {
             case 0:
                 for(int j = log_start; data[j] != '\n' && j < fileSize; j++) {
-                    printf("%c", data[j]);
                     log_info[j - log_start] = data[j];
-    //                printf("%c", log_info[j - log_start]);
                 }
-    //            printf("\n");
-        //        strcpy(log_info[log_counter], entry);
                 addEntry("General:", log_info);
-    //            memset(entry, 0, LOG_INFO);
+                memset(log_info, 0, LOG_INFO);
+                break;
+            case 1:
+                for(int j = type_start; j < type_end + 1; j++) {
+                    type_name[j - type_start] = data[j];
+                    data[j] = '\\';
+                }
+                for(int k = log_start; data[k] != '\n'; k++) {
+                    if(data[k] == '\\') {
+                        log_start++;
+                    }
+                    else {
+                        log_info[k - log_start] = data[k];
+                    }
+                }
+                addEntry(type_name, log_info);
+                memset(type_name, 0, TYPE_NAME);
+                memset(log_info, 0, LOG_INFO);
+                break;
+            case 2:
+                for(int j = type_start; j < type_end + 1; j++) {
+                    type_name[j - type_start] = data[j];
+                }
+                log_start = type_end + 2;
+                while(!new_type) {
+                    i = log_start;
+                    for(int k = log_start; data[k] != '\n'; k++, log_start++) {
+                        if(data[k] == ':' && (data[k + 1] == ' ' || data[k + 1] == '\n')) {
+                            new_type = 1;
+                            memset(log_info, 0, LOG_INFO);
+                            strcpy(log_info, "");
+                            break;
+                        }
+                        log_info[k - i] = data[k];
+                    }
+                    log_start++;
+                    addEntry(type_name, log_info);
+                    memset(log_info, 0, LOG_INFO);
+                }
+                log_start--;
+                memset(type_name, 0, TYPE_NAME);
+                memset(log_info, 0, LOG_INFO);
+                i -= log_start - i;
                 break;
         }
         while(data[i] != '\n' && i < fileSize) {
             i++;
         }
         type_found = 0;
+        new_type = 0;
     }
-//    printDict();
+    reportfd = open(report, O_RDWR | O_CREAT, 0666);
+    writeReport(reportfd);
+    close(reportfd);
     printf("Report is generated at: [%s]\n", report);
 }
