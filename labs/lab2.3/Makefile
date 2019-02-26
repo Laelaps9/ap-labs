@@ -3,3 +3,4 @@ all:
 
 clean:
 	rm -rf cross-ref
+	rm -rf words.txt
