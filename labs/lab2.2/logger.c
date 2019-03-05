@@ -54,13 +54,9 @@ int warnf(const char *format, ...) {
 	int done;
 
 	textcolor(BRIGHT, MAGENTA, NO_BACKGROUND);
-
-	// printf source codeEVERSE
 	va_start (arg, format);
 	done = vfprintf (stdout, format, arg);
 	va_end (arg);
-
-	// End the color change
 	printf("\033[0m");
 	return done;
 }
@@ -70,13 +66,9 @@ int errorf(const char *format, ...) {
 	int done;
 
 	textcolor(BRIGHT, RED, NO_BACKGROUND);
-
-	// printf source code
 	va_start (arg, format);
 	done = vfprintf (stdout, format, arg);
 	va_end (arg);
-
-	// End the color change
 	printf("\033[0m");
 	return done;
 }
@@ -86,13 +78,9 @@ int panicf(const char *format, ...) {
 	int done;
 
 	textcolor(REVERSE, MAGENTA, NO_BACKGROUND);
-
-	// printf source code
 	va_start (arg, format);
 	done = vfprintf (stdout, format, arg);
 	va_end (arg);
-
-	// End the color change
 	printf("\033[0m");
 	return done;
 }
