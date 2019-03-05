@@ -50,17 +50,56 @@ int infof(const char *format, ...) {
 }
 
 int warnf(const char *format, ...) {
-	return 1;
+	va_list arg;
+	int done;
+
+	textcolor(BRIGHT, MAGENTA, NO_BACKGROUND);
+
+	// printf source codeEVERSE
+	va_start (arg, format);
+	done = vfprintf (stdout, format, arg);
+	va_end (arg);
+
+	// End the color change
+	printf("\033[0m");
+	return done;
 }
 
 int errorf(const char *format, ...) {
-	return 1;
+	va_list arg;
+	int done;
+
+	textcolor(BRIGHT, RED, NO_BACKGROUND);
+
+	// printf source code
+	va_start (arg, format);
+	done = vfprintf (stdout, format, arg);
+	va_end (arg);
+
+	// End the color change
+	printf("\033[0m");
+	return done;
 }
 
 int panicf(const char *format, ...) {
-	return 1;
+	va_list arg;
+	int done;
+
+	textcolor(REVERSE, MAGENTA, NO_BACKGROUND);
+
+	// printf source code
+	va_start (arg, format);
+	done = vfprintf (stdout, format, arg);
+	va_end (arg);
+
+	// End the color change
+	printf("\033[0m");
+	return done;
 }
 
 int main() {
 	infof("INFO\n");
+	warnf("WARNING\n");
+	errorf("ERROR\n");
+	panicf("PANIC\n");
 }
