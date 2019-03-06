@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include "logger.h"
 
 #define RESET			0
 #define BRIGHT 			1
@@ -83,11 +84,4 @@ int panicf(const char *format, ...) {
 	va_end (arg);
 	printf("\033[0m");
 	return done;
-}
-
-int main() {
-	infof("INFO\n");
-	warnf("WARNING\n");
-	errorf("ERROR\n");
-	panicf("PANIC\n");
 }
