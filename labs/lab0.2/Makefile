@@ -4,6 +4,6 @@ all:
 	gcc str-main.o strlib.o -o str-final.o
 
 clean:
-	rm -rf str-main.o
-	rm -rf strlib.o
-	rm -rf str-final.o
+	rm str-main.o
+	rm strlib.o
+	rm str-final.o
