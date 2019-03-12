@@ -1,7 +1,8 @@
 # Lab 2.4
 ## logger.c
 **logger.c** is a library that contains the functions used for printing each type of log. The user can specify where
-to print these logs (stdout or syslog) using the function **initLogger**.
+to print these logs (stdout or syslog) using the function **initLogger**. Using initLogger("") and initLogger("stdout") will change the logs'
+destination to stdout, using initLogger("syslog") will change the logs' destination to syslog. Not using initLogger() will have stdout as default.
 * INFO: Info. messages are printed in white, bold color. In syslog this log will be printed in *LOG_INFO* format.  
 * WARNING: Warnings are printed in a dim blue color. In syslog this log will be printed in *LOG_WARNING* format.  
 * ERROR: Errors are printed in red. In syslog this log will be printed in *LOG_ERR* format.  
