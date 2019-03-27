@@ -36,7 +36,11 @@ static void sigHandler(int signo) {
 }
 
 int main(int argc, char *argv[]) {
-	int fd = open(argv[2], O_RDONLY);
+	int fd;
+	if((fd = open(argv[2], O_RDONLY)) < 0) {
+		errorf("File not found\n");
+		return 1;
+	}
 	int fileSize = 0,
 		content = 0;
 	fileSize = lseek(fd, 0, SEEK_END);
@@ -48,7 +52,7 @@ int main(int argc, char *argv[]) {
 	close(fd);
 
 	if(argc != 3) {
-		errorf("USAGE: --<enconde || decode> file.txt\n");
+		errorf("USAGE: ./base64 --<enconde || decode> file.txt\n");
 		return 1;
 	}
 
@@ -72,6 +76,10 @@ int main(int argc, char *argv[]) {
 		}
 		fd = open("decoded.txt", O_CREAT | O_WRONLY, 0666),
 		write(fd, result_dec, content);
+	}
+	else {
+		errorf("USAGE: ./base64 --<enconde || decode> file.txt\n");
+		return 1;
 	}
 }
 
