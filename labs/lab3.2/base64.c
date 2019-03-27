@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <signal.h>
 #include "logger.h"
 
 #define WHITESPACE 64
@@ -10,9 +11,29 @@
 #define INVALID    66
 #define MAX_RESULT_SIZE 1000000
 
-int base64encode(const void* data_buf, size_t dataLength, char* result, size_t resultSize);
+/*
+ 		base64encode and base64decode were taken from the WIKIBOOKS webpage of the Base64 implementation
+		https://en.wikibooks.org/wiki/Algorithm_Implementation/Miscellaneous/Base64
+*/
 
+int base64encode(const void* data_buf, size_t dataLength, char* result, size_t resultSize);
 int base64decode (char *in, size_t inLen, unsigned char *out, size_t outLen);
+
+size_t x;
+int dataLen,
+	encodedtxt,
+	decoding;
+char *action;
+
+static void sigHandler(int signo) {
+	if(strcmp(action, "encode") == 0) {
+		errorf("Progress: %f%\n", ((float) x / (float) dataLen) * 100);
+	}
+	else if(strcmp(action, "decode") == 0) {
+		errorf("Progress: %f%\n", ((float) decoding / (float) encodedtxt) * 100);
+	}
+	sleep(2);
+}
 
 int main(int argc, char *argv[]) {
 	int fd = open(argv[2], O_RDONLY);
@@ -29,6 +50,14 @@ int main(int argc, char *argv[]) {
 	if(argc != 3) {
 		errorf("USAGE: --<enconde || decode> file.txt\n");
 		return 1;
+	}
+
+	if(signal(SIGINT, sigHandler) == SIG_ERR) {
+		errorf("Can't catch SIGINT\n");
+	}
+
+	if(signal(30, sigHandler) == SIG_ERR) {
+		errorf("Can't catch SIGINFO\n");
 	}
 
 	if(strcmp(argv[1], "--encode") == 0) {
@@ -51,16 +80,18 @@ int base64encode(const void* data_buf, size_t dataLength, char* result, size_t r
    const char base64chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
    const uint8_t *data = (const uint8_t *)data_buf;
    size_t resultIndex = 0;
-   size_t x;
    uint32_t n = 0;
    int padCount = dataLength % 3,
    	   fd = open("encoded.txt", O_CREAT | O_WRONLY, 0666),
 	   content = 0;
    uint8_t n0, n1, n2, n3;
+   dataLen = dataLength;
+   action = "encode";
 
    /* increment over the length of the string, three characters at a time */
    for (x = 0; x < dataLength; x += 3)
    {
+	  infof("Encoding...\n");
       /* these three 8-bit (ASCII) characters become one 24-bit number */
       n = ((uint32_t)data[x]) << 16; //parenthesis needed, compiler depending on flags can do the shifting before conversion to uint32_t, resulting to 0
 
@@ -146,8 +177,12 @@ int base64decode (char *in, size_t inLen, unsigned char *out, size_t outLen) {
     char iter = 0;
     uint32_t buf = 0;
     size_t len = 0;
+	encodedtxt = inLen;
+	action = "decode";
 
     while (in < end) {
+		infof("Decoding...\n");
+		decoding++;
         unsigned char c = d[*in++];
 
         switch (c) {

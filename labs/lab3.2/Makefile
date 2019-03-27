@@ -1,5 +1,5 @@
 CC       = gcc
-CFLAGS   = 
+CFLAGS   =
 LDFLAGS  =
 OBJFILES = logger.o base64.o
 TARGET   = base64
@@ -11,3 +11,5 @@ $(TARGET) : $(OBJFILES)
 
 clean:
 	rm -f $(OBJFILES) $(TARGET) *~
+	rm encoded.txt
+	rm decoded.txt
