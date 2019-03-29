@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <dirent.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define INFO_LENGTH 40
 #define MAX_PROCESSES 1000
@@ -15,8 +16,8 @@ struct process {
 		 pid[INFO_LENGTH],
 		 ppid[INFO_LENGTH],
 		 memory[INFO_LENGTH],
-		 threads[INFO_LENGTH],
-		 openFiles[INFO_LENGTH];
+		 threads[INFO_LENGTH];
+	int openFiles;
 };
 
 struct process processes[MAX_PROCESSES];
@@ -24,7 +25,6 @@ struct process processes[MAX_PROCESSES];
 int main(){
 	// Place your magic here
 	readProcesses();
-	printf("END 2\n");
 	printProcesses();
 	clear();
 	return 0;
@@ -35,21 +35,29 @@ int readProcesses() {
 	struct dirent *dir;
 	FILE *fp;
 	char path[30],
-		 info[INFO_LENGTH];
+		 fdpath[30],
+		 info[INFO_LENGTH],
+		 c;
 	int dataNum,
 		procNum = 0,
-		c;
+		opFiles;
 
 	memset(info, 0, INFO_LENGTH);
 	strcpy(path, "/proc/");
+	strcpy(fdpath, "/proc/");
 	while((dir = readdir(d)) != NULL) {
 
 		// Filters out folders starting with a number
-		if(dir->d_name[0] >=48 && dir->d_name[0] <=57) {
+		if(dir->d_name[0] >= 48 && dir->d_name[0] <= 57) {
 			dataNum = 0;
-			// Add path of directory and status to know which file to enter
+			opFiles = 0;
+			// Add status path
 			strcat(path, dir->d_name);
 			strcat(path, "/status");
+
+			// Add fd path
+			strcat(fdpath, dir->d_name);
+			strcat(fdpath, "/fd");
 			// Read status file
 			fp = fopen(path, "r");
 
@@ -70,7 +78,7 @@ int readProcesses() {
 						if(getc(fp) == 'a' && getc(fp) == 'm' && getc(fp) == 'e' && getc(fp) == ':') {
 							do {
 								c = getc(fp);
-							} while(c == ' ');
+							} while(c == ' ' || c == '\t');
 
 							for(int j = 0; c != '\n'; j++) {
 								info[j] = c;
@@ -129,7 +137,7 @@ int readProcesses() {
 								if(getc(fp) == 'i' && getc(fp) == 'd' && getc(fp) == ':') {
 									do {
 										c = getc(fp);
-									} while(c == ' ');
+									} while(c == ' ' || c == '\t');
 
 									for(int j = 0; c != '\n'; j++) {
 										info[j] = c;
@@ -158,7 +166,7 @@ int readProcesses() {
 								if(getc(fp) == 'P' && getc(fp) == 'i' && getc(fp) == 'd' && getc(fp) == ':') {
 									do {
 										c = getc(fp);
-									} while(c == ' ');
+									} while(c == ' ' || c == '\t');
 
 									for(int j = 0; c != '\n'; j++) {
 										info[j] = c;
@@ -184,13 +192,11 @@ int readProcesses() {
 									if(getc(fp) == 'm' && getc(fp) == 'R' && getc(fp) == 'S' && getc(fp) == 'S' && getc(fp) == ':') {
 										do {
 											c = getc(fp);
-										} while(c == ' ');
+										} while(c == ' ' || c == '\t');
 
 										for(int j = 0; c != ' '; j++) {
 											info[j] = c;
 											c = getc(fp);
-											if(c == ' ') {
-											}
 										}
 										strcpy(processes[procNum].memory, info);
 
@@ -215,7 +221,7 @@ int readProcesses() {
 
 											do {
 												c = getc(fp);
-											} while(c == ' ');
+											} while(c == ' ' || c == '\t');
 
 											if(c == '\n') {
 												break;
@@ -236,8 +242,25 @@ int readProcesses() {
 				dataNum++;
 				c = '\0';
 			}
-			strcpy(path, "/proc/");
+
 			fclose(fp);
+
+			// Check fd directory for files open
+			DIR *fdd = opendir(fdpath);
+			struct dirent *fd_dir;
+
+			// Count files
+			while((fd_dir = readdir(fdd)) != NULL) {
+				opFiles++;
+			}
+
+			closedir(fdd);
+
+			// Save # of files excluding "." and ".."
+			processes[procNum].openFiles = opFiles - 2;
+
+			strcpy(fdpath, "/proc/");
+			strcpy(path, "/proc/");
 			procNum++;
 		}
 	}
@@ -247,8 +270,16 @@ int readProcesses() {
 
 int printProcesses() {
 	int i = 0;
+	double mem;
+
+	printf("|%-6s | %-5s | %-40s | %-10s | %-10s | %-4s | %-10s|\n", " PID", "Parent", "Name", "State", "Memory", "# Threads", "Open Files");
+	printf("|-------|--------|------------------------------------------|------------|------------|-----------|-----------|\n");
+
 	while(processes[i].name[0] != '\0') {
-		printf("%s :: %s :: %s :: %s :: %s :: %s\n", processes[i].name, processes[i].state, processes[i].pid, processes[i].ppid, processes[i].memory, processes[i].threads);
+
+		// convert memory from K to M
+		mem = atof(processes[i].memory) / 1000;
+		printf("| %-5s | %-6s | %-40s | %-10s | %-9.1fM | %-9s | %-10d|\n", processes[i].pid, processes[i].ppid, processes[i].name, processes[i].state, mem, processes[i].threads, processes[i].openFiles);
 		i++;
 	}
 	return 0;
