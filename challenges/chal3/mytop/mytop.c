@@ -2,31 +2,68 @@
 #include <dirent.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+#include <time.h>
 
 #define INFO_LENGTH 40
 #define MAX_PROCESSES 1000
 
-void clear();
-int readProcesses();
-int printProcesses();
+char *header = "|%-6s | %-5s | %-40s | %-10s | %-10s | %-4s | %-10s|\n",
+	 *headDiv =	"|-------|--------|------------------------------------------|------------|------------|-----------|-----------|\n",
+	 *tableFormat = "| %-5s | %-6s | %-40s | %-10s | %-9.1fM | %-9s | %-10d|\n";
 
 struct process {
 	char name[INFO_LENGTH],
-		 state[INFO_LENGTH],
-		 pid[INFO_LENGTH],
-		 ppid[INFO_LENGTH],
-		 memory[INFO_LENGTH],
-		 threads[INFO_LENGTH];
+	state[INFO_LENGTH],
+	pid[INFO_LENGTH],
+	ppid[INFO_LENGTH],
+	memory[INFO_LENGTH],
+	threads[INFO_LENGTH];
 	int openFiles;
 };
 
+static const struct process emptyProcess;
 struct process processes[MAX_PROCESSES];
+
+void clear();
+int readProcesses();
+int printProcesses();
+static void saveProcesses(int signo) {
+	FILE *fp;
+	time_t t = time(NULL);
+	struct tm tm = *localtime(&t);
+	char fileName[30];
+	float mem;
+
+	sprintf(fileName, "mytop_status_%d-%d-%d.txt", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+	fp = fopen(fileName, "w");
+	fprintf(fp, header, " PID", "Parent", "Name", "State", "Memory", "# Threads", "Open Files");
+	fprintf(fp, headDiv);
+
+	for(int i = 0; processes[i].name[0] != '\0'; i++) {
+		// convert memory from K to M
+		mem = atof(processes[i].memory) / 1000;
+		fprintf(fp, tableFormat, processes[i].pid, processes[i].ppid, processes[i].name, processes[i].state, mem, processes[i].threads, processes[i].openFiles);
+	}
+	printf("\n Dashboard saved to %s\n", fileName);
+	fclose(fp);
+	sleep(4);
+}
 
 int main(){
 	// Place your magic here
-	readProcesses();
-	printProcesses();
-	clear();
+	if(signal(SIGINT, saveProcesses) == SIG_ERR) {
+		printf("Can't catch SIGINT\n");
+	}
+
+	while(1) {
+		readProcesses();
+		printProcesses();
+		sleep(3);
+		clear();
+	}
+
 	return 0;
 }
 
@@ -42,9 +79,11 @@ int readProcesses() {
 		procNum = 0,
 		opFiles;
 
+
 	memset(info, 0, INFO_LENGTH);
 	strcpy(path, "/proc/");
 	strcpy(fdpath, "/proc/");
+
 	while((dir = readdir(d)) != NULL) {
 
 		// Filters out folders starting with a number
@@ -62,6 +101,7 @@ int readProcesses() {
 			fp = fopen(path, "r");
 
 			while(dataNum < 6) {
+
 				switch(dataNum) {
 					case 0:
 						do {
@@ -116,6 +156,7 @@ int readProcesses() {
 									c = getc(fp);
 								}
 								strcpy(processes[procNum].state, info);
+
 								fseek(fp, 0L, SEEK_SET);
 							}
 							else {
@@ -173,6 +214,7 @@ int readProcesses() {
 										c = getc(fp);
 									}
 									strcpy(processes[procNum].ppid, info);
+
 									fseek(fp, 0L, SEEK_SET);
 								}
 								else {
@@ -232,6 +274,7 @@ int readProcesses() {
 												c = getc(fp);
 											}
 											strcpy(processes[procNum].threads, info);
+
 										}
 										else {
 											dataNum = 4;
@@ -244,11 +287,9 @@ int readProcesses() {
 			}
 
 			fclose(fp);
-
 			// Check fd directory for files open
 			DIR *fdd = opendir(fdpath);
 			struct dirent *fd_dir;
-
 			// Count files
 			while((fd_dir = readdir(fdd)) != NULL) {
 				opFiles++;
@@ -270,21 +311,23 @@ int readProcesses() {
 
 int printProcesses() {
 	int i = 0;
-	double mem;
+	float mem;
 
-	printf("|%-6s | %-5s | %-40s | %-10s | %-10s | %-4s | %-10s|\n", " PID", "Parent", "Name", "State", "Memory", "# Threads", "Open Files");
-	printf("|-------|--------|------------------------------------------|------------|------------|-----------|-----------|\n");
+	printf(header, " PID", "Parent", "Name", "State", "Memory", "# Threads", "Open Files");
+	printf(headDiv);
 
 	while(processes[i].name[0] != '\0') {
-
 		// convert memory from K to M
 		mem = atof(processes[i].memory) / 1000;
-		printf("| %-5s | %-6s | %-40s | %-10s | %-9.1fM | %-9s | %-10d|\n", processes[i].pid, processes[i].ppid, processes[i].name, processes[i].state, mem, processes[i].threads, processes[i].openFiles);
+		printf(tableFormat, processes[i].pid, processes[i].ppid, processes[i].name, processes[i].state, mem, processes[i].threads, processes[i].openFiles);
 		i++;
 	}
 	return 0;
 }
 
 void clear() {
+	for(int i = 0; processes[i].name[0] != '\0'; i++) {
+		processes[i] = emptyProcess;
+	}
 	printf("\e[1;1H\e[2J");
 }
