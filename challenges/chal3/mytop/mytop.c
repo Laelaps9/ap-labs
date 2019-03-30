@@ -48,7 +48,7 @@ static void saveProcesses(int signo) {
 	}
 	printf("\n Dashboard saved to %s\n", fileName);
 	fclose(fp);
-	sleep(4);
+	sleep(3);
 }
 
 int main(){
