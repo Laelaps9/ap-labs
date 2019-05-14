@@ -2,15 +2,15 @@
 
 pacman.go
 
-![](https://github.com/Guemez/ap-labs/blob/master/challenges/pacman/architecture.png)
+![](assets/architecture.png)
 
 External libraries
 
-![](https://github.com/Guemez/ap-labs/blob/master/challenges/pacman/external.png)
+![](assets/external.png)
 
 
 ## METHODS
-### loadPicture(path string) (pixel.Picture.error)
+### loadPicture(path string) (pixel.Picture, error)
 Opens image in path, creates a pixel.Picture object with the image and returns pixel.Picture and error if any.
 
 ### checkCollision(vec1, vec2 pixel.Vec) (bool)
