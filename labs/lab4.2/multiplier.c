@@ -49,13 +49,12 @@ int main(int argc, char *argv[]) {
 
 	result = multiply(matA, matB);
 
-/*	for(int i = 0; i < 10; i++) {
-		printf("%ld\n", buffers[0][i]);
-	}
-*/
 	free(matA);
 	free(matB);
+	free(result);
 	free(buffers);
+	free(mutexes);
+	free(mtxs);
 
 	for(int i = 0; i < NUM_BUFFERS; i++) {
 		pthread_mutex_destroy(&mutexes[i]);
@@ -90,24 +89,26 @@ long * readMatrix(char *filename) {
 	}
 
 	fclose(fp);
+	free(mat);
+	free(ptr);
 	return mat;
 }
 
 long * getColumn(int col, long *matrix) {
-	long *column = (long *)malloc(sizeof(long) * 2);
+	long *column = (long *)malloc(sizeof(long) * ROW_LEN);
 
-	for(int i = 0; i < 2; i++) {
-		column[i] = matrix[col + (i * 2)];
+	for(int i = 0; i < ROW_LEN; i++) {
+		column[i] = matrix[col + (i * ROW_LEN)];
 	}
 
 	return column;
 }
 
 long * getRow(int row, long *matrix) {
-	long *r = (long *)malloc(sizeof(long) * 2);
+	long *r = (long *)malloc(sizeof(long) * ROW_LEN);
 
-	for(int i = 0; i < 2; i++) {
-		r[i] = matrix[(row * 2) + i];
+	for(int i = 0; i < ROW_LEN; i++) {
+		r[i] = matrix[(row * ROW_LEN) + i];
 	}
 
 	return r;
@@ -115,14 +116,12 @@ long * getRow(int row, long *matrix) {
 
 int getLock() {
 	int buffer = -1;
-	while(buffer == -1) {
-		for(int i = 0; i < NUM_BUFFERS; i++) {
-			if(pthread_mutex_trylock(&mutexes[i]) == 0) {
-				buffer = i;
-				break;
-			}
+
+	for(int i = 0; i < NUM_BUFFERS; i++) {
+		if(pthread_mutex_trylock(&mutexes[i]) == 0) {
+			buffer = i;
+			break;
 		}
-		wait();
 	}
 	return buffer;
 }
@@ -134,14 +133,10 @@ int releaseLock(int lock) {
 
 long dotProduct(long *vec1, long *vec2) {
 	long res = 0;
-	int buff,
-		buff2;
 
 	for(int i = 0; i < 2; i++) {
 		res += vec1[i] * vec2[i];
 	}
-
-	releaseLock();
 	return res;
 }
 
@@ -150,17 +145,42 @@ long * multiply(long *matA, long *matB) {
 
 	result = (long *)malloc(sizeof(long) * 4000000);
 
+	for(int i = 0; i < ROW_LEN; i++) {
 #pragma omp parallel for
-	for(int i = 0; i < 2; i++) {
-#pragma omp parallel for
-		for(int j = 0; j < 2; j++) {
-			result[(i*2) + j] = dotProduct(getRow(i, matA), getColumn(j, matB));
+		for(int j = 0; j < ROW_LEN; j++) {
+			int rowLock,
+				colLock;
+
+			do {
+				rowLock = getLock();
+			} while(rowLock == -1);
+
+			do {
+				colLock = getLock();
+			} while(colLock == -1);
+
+			buffers[rowLock] = getRow(i, matA);
+			buffers[colLock] = getColumn(j, matB);
+
+			result[(i*ROW_LEN) + j] = dotProduct(buffers[rowLock], buffers[colLock]);
+
+			releaseLock(rowLock);
+			releaseLock(colLock);
+
 		}
 	}
-	printf("%lu\n", result[0]);
 	return result;
 }
 
 int saveResultMatrix(long *result) {
+	FILE *fp;
+
+	fp = fopen("result.dat", "w");
+
+	for(int i = 0; i < ROW_LEN * ROW_LEN; i++) {
+		fprintf(fp, "%lu", result[i]);
+	}
+
+	fclose(fp);
 	return 0;
 }
